@@ -1,1 +1,2 @@
-Drill V2, a shitt attempt of making malware
+Drill 
+Distributable, Remote, Lightweight, Link
